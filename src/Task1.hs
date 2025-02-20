@@ -37,7 +37,31 @@ torder :: Order    -- ^ Order of resulting traversal
        -> Maybe a  -- ^ Optional leaf value
        -> Tree a   -- ^ Tree to traverse
        -> [a]      -- ^ List of values in specified order
-torder = error "TODO: define torder"
+torder order leaf tree = case order of
+                        PreOrder  -> preOrder leaf tree
+                        InOrder   -> inOrder leaf tree
+                        PostOrder -> postOrder leaf tree
+
+maybeToList :: Maybe a -> [a]
+maybeToList (Just a) = [a]
+maybeToList Nothing = []
+
+preOrder :: Maybe a -> Tree a -> [a]
+preOrder leaf tree = case tree of
+  (Branch t l r) -> [t] ++ preOrder leaf l ++ preOrder leaf r
+  Leaf -> maybeToList leaf
+
+inOrder :: Maybe a -> Tree a -> [a]
+inOrder leaf tree = case tree of
+  (Branch t l r) -> inOrder leaf l ++ [t] ++ inOrder leaf r
+  Leaf -> maybeToList leaf 
+
+postOrder :: Maybe a -> Tree a -> [a]
+postOrder leaf tree  = case tree of
+  (Branch t l r) -> postOrder leaf l ++ postOrder leaf r ++ [t]
+  Leaf -> maybeToList leaf 
+  
+
 
 -- | Returns values of given 'Forest' separated by optional separator
 -- where each 'Tree' is traversed in specified 'Order' with optional leaf value
@@ -51,10 +75,16 @@ torder = error "TODO: define torder"
 -- >>> forder PostOrder (Just '|') (Just '.') [Leaf, Branch 'C' Leaf Leaf, Branch 'A' Leaf (Branch 'B' Leaf Leaf)]
 -- ".|..C|...BA"
 --
+
+intercalate :: [a] -> [[a]] -> [a]
+intercalate _ [] = []
+intercalate _ [l] = l
+intercalate s (l:ls) = l ++ s ++ intercalate s ls
+
 forder :: Order     -- ^ Order of tree traversal
        -> Maybe a   -- ^ Optional separator between resulting tree orders
        -> Maybe a   -- ^ Optional leaf value
        -> Forest a  -- ^ List of trees to traverse
        -> [a]       -- ^ List of values in specified tree order
-forder = error "TODO: define forder"
+forder o s l f = intercalate (maybeToList s) (map (torder o l) f)
 

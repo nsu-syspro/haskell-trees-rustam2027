@@ -13,7 +13,7 @@ import Task1 (Tree(..))
 
 -- | Ordering enumeration
 data Ordering = LT | EQ | GT
-  deriving Show
+  deriving (Show, Eq)
 
 -- | Binary comparison function indicating whether first argument is less, equal or
 -- greater than the second one (returning 'LT', 'EQ' or 'GT' respectively)
@@ -33,7 +33,9 @@ type Cmp a = a -> a -> Ordering
 -- GT
 --
 compare :: Ord a => Cmp a
-compare = error "TODO: define compare"
+compare a b | a < b = LT
+            | a > b = GT
+            | otherwise = EQ
 
 -- | Conversion of list to binary search tree
 -- using given comparison function
@@ -45,8 +47,11 @@ compare = error "TODO: define compare"
 -- >>> listToBST compare ""
 -- Leaf
 --
+
 listToBST :: Cmp a -> [a] -> Tree a
-listToBST = error "TODO: define listToBST"
+listToBST cmp (x:xs) = tinsert cmp x (listToBST cmp xs)
+listToBST _ [] = Leaf
+
 
 -- | Conversion from binary search tree to list
 --
@@ -62,7 +67,9 @@ listToBST = error "TODO: define listToBST"
 -- []
 --
 bstToList :: Tree a -> [a]
-bstToList = error "TODO: define bstToList"
+bstToList tree = case tree of
+  (Branch t l r) -> bstToList l ++ [t] ++ bstToList r
+  Leaf           -> []
 
 -- | Tests whether given tree is a valid binary search tree
 -- with respect to given comparison function
@@ -75,9 +82,25 @@ bstToList = error "TODO: define bstToList"
 -- True
 -- >>> isBST compare (Branch 5 (Branch 1 Leaf Leaf) (Branch 3 Leaf Leaf))
 -- False
---
+
+data Range a = Range (Maybe a) (Maybe a)
+
+inRange :: Cmp a -> Range a -> a -> Bool
+inRange cmp (Range (Just l) (Just r)) e = cmp l e == LT &&
+                                          (cmp e r == LT)
+inRange cmp (Range Nothing (Just a)) e = cmp e a == LT
+inRange cmp (Range (Just a) Nothing) e = cmp a e == LT
+inRange _ _ _= True
+
 isBST :: Cmp a -> Tree a -> Bool
-isBST = error "TODO: define isBST"
+isBST cmp (Branch t l r) = recursiveIsBst cmp l (Range Nothing (Just t)) && recursiveIsBst cmp r (Range (Just t) Nothing)
+isBST _ Leaf = True
+
+recursiveIsBst :: Cmp a -> Tree a -> Range a -> Bool
+recursiveIsBst cmp (Branch t l r) (Range lr rr) = inRange cmp (Range lr rr) t &&
+                                                recursiveIsBst cmp l (Range lr (Just t)) &&
+                                                recursiveIsBst cmp r (Range (Just t) rr)
+recursiveIsBst _ Leaf _ = True
 
 -- | Searches given binary search tree for
 -- given value with respect to given comparison
@@ -95,7 +118,11 @@ isBST = error "TODO: define isBST"
 -- Just 2
 --
 tlookup :: Cmp a -> a -> Tree a -> Maybe a
-tlookup = error "TODO: define tlookup"
+tlookup cmp e (Branch t l r) = case cmp e t of
+  LT -> tlookup cmp e l
+  GT -> tlookup cmp e r
+  EQ -> Just t
+tlookup _ _ Leaf = Nothing
 
 -- | Inserts given value into given binary search tree
 -- preserving its BST properties with respect to given comparison
@@ -113,7 +140,11 @@ tlookup = error "TODO: define tlookup"
 -- Branch 'a' Leaf Leaf
 --
 tinsert :: Cmp a -> a -> Tree a -> Tree a
-tinsert = error "TODO: define tinsert"
+tinsert cmp e (Branch t l r) = case cmp e t of
+  LT -> Branch t (tinsert cmp e l) r
+  GT -> Branch t l (tinsert cmp e r)
+  EQ -> Branch e l r
+tinsert _ e Leaf = Branch e Leaf Leaf
 
 -- | Deletes given value from given binary search tree
 -- preserving its BST properties with respect to given comparison
@@ -129,4 +160,17 @@ tinsert = error "TODO: define tinsert"
 -- Leaf
 --
 tdelete :: Cmp a -> a -> Tree a -> Tree a
-tdelete = error "TODO: define tdelete"
+tdelete cmp e (Branch t l r) = case cmp e t of
+  LT -> Branch t (tdelete cmp e l) r
+  GT -> Branch t l (tdelete cmp e r)
+  EQ -> case (l, r) of
+    (Leaf, Leaf) ->  Leaf
+    (_, Leaf) -> l
+    (Leaf, _) -> r
+    _ -> Branch (findMin r) l (tdelete cmp (findMin r) r)
+tdelete _ _ Leaf = Leaf
+
+findMin :: Tree a -> a
+findMin (Branch t Leaf _) = t
+findMin (Branch _ l _) = findMin l
+findMin _ = undefined
